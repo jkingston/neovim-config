@@ -2,6 +2,8 @@
 
 Minimal Neovim 0.12+ configuration using the built-in `vim.pack` package
 manager. Plugins are installed automatically the first time Neovim starts.
+Blink uses its portable Lua fuzzy matcher, so the configuration does not need a
+Rust toolchain merely to provide completion.
 
 ## C and C++
 

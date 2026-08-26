@@ -83,9 +83,9 @@ vim.api.nvim_create_autocmd("LspAttach", {
 })
 
 local cmp = require("blink.cmp")
-cmp.build():wait(60000)
 cmp.setup({
 	completion = { ghost_text = { enabled = true } },
+	fuzzy = { implementation = "lua" },
 	keymap = {
 		preset = "default",
 		["<CR>"] = { "accept", "fallback" },
