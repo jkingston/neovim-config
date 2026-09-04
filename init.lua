@@ -18,6 +18,8 @@ opt.undofile = true
 opt.ignorecase = true
 opt.smartcase = true
 opt.clipboard = "unnamedplus"
+opt.splitbelow = true
+opt.splitright = true
 
 vim.pack.add({
 	"https://github.com/nvim-treesitter/nvim-treesitter",
@@ -67,11 +69,7 @@ vim.api.nvim_create_autocmd("LspAttach", {
 
 		map("gd", vim.lsp.buf.definition, "Go to definition")
 		map("gD", vim.lsp.buf.declaration, "Go to declaration")
-		map("gr", vim.lsp.buf.references, "Go to references")
-		map("gi", vim.lsp.buf.implementation, "Go to implementation")
 		map("K", vim.lsp.buf.hover, "Hover documentation")
-		map("<leader>ca", vim.lsp.buf.code_action, "Code action")
-		map("<leader>cr", vim.lsp.buf.rename, "Rename symbol")
 		map("<leader>cd", vim.diagnostic.open_float, "Line diagnostics")
 		map("[d", function()
 			vim.diagnostic.jump({ count = -1, float = true })
@@ -86,13 +84,45 @@ local cmp = require("blink.cmp")
 cmp.setup({
 	completion = { ghost_text = { enabled = true } },
 	fuzzy = { implementation = "lua" },
-	keymap = {
-		preset = "default",
-		["<CR>"] = { "accept", "fallback" },
-	},
+	keymap = { preset = "default" },
 })
 
-require("gitsigns").setup()
+require("gitsigns").setup({
+	on_attach = function(buffer)
+		local gitsigns = require("gitsigns")
+		local function git_map(mode, lhs, rhs, description)
+			vim.keymap.set(mode, lhs, rhs, { buffer = buffer, desc = description })
+		end
+
+		git_map("n", "]c", function()
+			if vim.wo.diff then
+				vim.cmd.normal({ "]c", bang = true })
+			else
+				gitsigns.nav_hunk("next")
+			end
+		end, "Next Git hunk")
+		git_map("n", "[c", function()
+			if vim.wo.diff then
+				vim.cmd.normal({ "[c", bang = true })
+			else
+				gitsigns.nav_hunk("prev")
+			end
+		end, "Previous Git hunk")
+		git_map("n", "<leader>hs", gitsigns.stage_hunk, "Stage Git hunk")
+		git_map("n", "<leader>hr", gitsigns.reset_hunk, "Reset Git hunk")
+		git_map("x", "<leader>hs", function()
+			gitsigns.stage_hunk({ vim.fn.line("."), vim.fn.line("v") })
+		end, "Stage selected Git hunk")
+		git_map("x", "<leader>hr", function()
+			gitsigns.reset_hunk({ vim.fn.line("."), vim.fn.line("v") })
+		end, "Reset selected Git hunk")
+		git_map("n", "<leader>hp", gitsigns.preview_hunk, "Preview Git hunk")
+		git_map("n", "<leader>hb", function()
+			gitsigns.blame_line({ full = true })
+		end, "Git blame line")
+		git_map("n", "<leader>hd", gitsigns.diffthis, "Git diff against index")
+	end,
+})
 
 require("lualine").setup({
 	options = {
@@ -125,7 +155,7 @@ require("which-key").add({
 	{ "<leader>b", group = "Buffer" },
 	{ "<leader>c", group = "Code" },
 	{ "<leader>f", group = "File" },
-	{ "<leader>g", group = "Git" },
+	{ "<leader>h", group = "Git Hunk" },
 	{ "<leader>w", group = "Window" },
 	{ "<leader>x", group = "Diagnostics" },
 })
@@ -133,10 +163,13 @@ require("which-key").add({
 local map = vim.keymap.set
 map("n", "<Esc>", "<cmd>nohlsearch<cr>", { desc = "Clear search highlight" })
 map("n", "<leader>qq", "<cmd>qa<cr>", { desc = "Quit all" })
-map("n", "<leader>w", "<cmd>w<cr>", { desc = "Save file" })
+map({ "n", "i", "x", "s" }, "<C-s>", "<cmd>w<cr>", { desc = "Save file" })
 map("n", "<leader>fn", "<cmd>enew<cr>", { desc = "New file" })
 map("n", "<S-h>", "<cmd>bprevious<cr>", { desc = "Previous buffer" })
 map("n", "<S-l>", "<cmd>bnext<cr>", { desc = "Next buffer" })
+map("n", "[b", "<cmd>bprevious<cr>", { desc = "Previous buffer" })
+map("n", "]b", "<cmd>bnext<cr>", { desc = "Next buffer" })
+map("n", "<leader>bb", "<cmd>buffer #<cr>", { desc = "Alternate buffer" })
 map("n", "<leader>bd", "<cmd>bdelete<cr>", { desc = "Delete buffer" })
 map("n", "<leader>-", "<cmd>split<cr>", { desc = "Split below" })
 map("n", "<leader>|", "<cmd>vsplit<cr>", { desc = "Split right" })
@@ -145,25 +178,22 @@ map("n", "<C-h>", "<C-w>h", { desc = "Go to left window" })
 map("n", "<C-j>", "<C-w>j", { desc = "Go to lower window" })
 map("n", "<C-k>", "<C-w>k", { desc = "Go to upper window" })
 map("n", "<C-l>", "<C-w>l", { desc = "Go to right window" })
-map("n", "<leader>cf", function()
+map({ "n", "x" }, "<leader>cf", function()
 	require("conform").format({ async = true, lsp_format = "fallback" })
 end, { desc = "Format file" })
 map("n", "<leader>xq", "<cmd>copen<cr>", { desc = "Quickfix list" })
 map("n", "<leader>xl", "<cmd>lopen<cr>", { desc = "Location list" })
 map("n", "[q", "<cmd>cprev<cr>", { desc = "Previous quickfix" })
 map("n", "]q", "<cmd>cnext<cr>", { desc = "Next quickfix" })
-map("n", "]c", function()
-	require("gitsigns").nav_hunk("next")
-end, { desc = "Next git hunk" })
-map("n", "[c", function()
-	require("gitsigns").nav_hunk("prev")
-end, { desc = "Previous git hunk" })
-map("n", "<leader>gb", function()
-	require("gitsigns").blame_line()
-end, { desc = "Git blame" })
-map("n", "<leader>gp", function()
-	require("gitsigns").preview_hunk()
-end, { desc = "Preview git hunk" })
-map("n", "<leader>gr", function()
-	require("gitsigns").reset_hunk()
-end, { desc = "Reset git hunk" })
+map("n", "[e", function()
+	vim.diagnostic.jump({ count = -1, severity = vim.diagnostic.severity.ERROR, float = true })
+end, { desc = "Previous error" })
+map("n", "]e", function()
+	vim.diagnostic.jump({ count = 1, severity = vim.diagnostic.severity.ERROR, float = true })
+end, { desc = "Next error" })
+map("n", "[w", function()
+	vim.diagnostic.jump({ count = -1, severity = vim.diagnostic.severity.WARN, float = true })
+end, { desc = "Previous warning" })
+map("n", "]w", function()
+	vim.diagnostic.jump({ count = 1, severity = vim.diagnostic.severity.WARN, float = true })
+end, { desc = "Next warning" })
